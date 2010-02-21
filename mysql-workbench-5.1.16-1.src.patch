@@ -1,0 +1,602 @@
+--- origsrc/mysql-workbench-oss-5.1.16/backend/wbpublic/Makefile.am	2009-06-29 16:51:21.000000000 -0500
++++ src/mysql-workbench-oss-5.1.16/backend/wbpublic/Makefile.am	2009-07-07 13:52:56.973920100 -0500
+@@ -123,3 +123,5 @@ libwbpublic_la_SOURCES=\
+ 	grtui/checkbox_list_control.cpp
+ 
+ libwbpublic_la_LIBADD=../../library/canvas/src/libmdcanvas.la ../../library/forms/libmforms.la ../../library/dbc/libcdbc.la
++
++libwbpublic_la_LDFLAGS=-no-undefined
+--- origsrc/mysql-workbench-oss-5.1.16/configure.in	2009-06-29 16:51:22.000000000 -0500
++++ src/mysql-workbench-oss-5.1.16/configure.in	2009-07-07 15:17:49.261999400 -0500
+@@ -108,7 +108,9 @@ AC_SUBST(SIGC_LIBS)
+ PKG_CHECK_MODULES(GNOME, [libglade-2.0 gtkmm-2.4])
+ 
+ # libgnome-2.0 is optional (used for opening URLs etc)
++PKG_CHECK_EXISTS([gtk+-2.0 >= 2.14], [AC_DEFINE_UNQUOTED(HAVE_GTK_2_14, 1, "Have gtk_show_uri")],[
+ PKG_CHECK_MODULES(LIBGNOME, [libgnome-2.0], [AC_DEFINE_UNQUOTED(HAVE_LIBGNOME, 1, "Have libgnome-2.0 library")], [])
++])
+ 
+ GNOME_CFLAGS="$GNOME_CFLAGS $LIBGNOME_CFLAGS"
+ GNOME_LIBS="$GNOME_LIBS $LIBGNOME_LIBS"
+@@ -416,13 +418,13 @@ frontend/linux/workbench/Makefile
+ generated/Makefile
+ ])
+ 
+-#AC_CONFIG_SUBDIRS(ext/ctemplate/ctemplate-src)
++AC_CONFIG_SUBDIRS(ext/ctemplate/ctemplate-src)
+ 
+ AC_OUTPUT()
+ 
+-(
+-  cd ./ext/ctemplate/ctemplate-src &&
+-  autoreconf -i -s; 
+-  ./configure --prefix=$prefix --libdir=$libdir/mysql-workbench --disable-dependency-tracking
+-)    
++#(
++#  cd ./ext/ctemplate/ctemplate-src &&
++#  autoreconf -i -s; 
++#  ./configure --prefix=$prefix --libdir=$libdir/mysql-workbench --disable-dependency-tracking
++#)    
+ 
+--- origsrc/mysql-workbench-oss-5.1.16/ext/Makefile.am	2009-06-29 16:51:22.000000000 -0500
++++ src/mysql-workbench-oss-5.1.16/ext/Makefile.am	2009-07-07 14:59:13.911178100 -0500
+@@ -1 +1 @@
+-SUBDIRS=ctemplate scintilla/gtk cppconn
+\ No newline at end of file
++SUBDIRS=ctemplate/ctemplate-src scintilla/gtk cppconn
+--- origsrc/mysql-workbench-oss-5.1.16/ext/cppconn/driver/Makefile.am	2009-06-29 16:51:23.000000000 -0500
++++ src/mysql-workbench-oss-5.1.16/ext/cppconn/driver/Makefile.am	2009-07-07 15:51:48.076448100 -0500
+@@ -4,7 +4,8 @@ pkglib_LTLIBRARIES=mysqlcppconn.la
+ BUILT_SOURCES=setup_config_h
+ setup_config_h:
+ 	@echo "Setting <cppconn/config.h>"
+-	cp -f ../cppconn/config.linux.h ../cppconn/config.h
++	mkdir -p ../cppconn
++	cp -f $(srcdir)/../cppconn/config.linux.h ../cppconn/config.h
+ 	@touch setup_config_h
+ 
+ mysqlcppconn_la_SOURCES=\
+@@ -26,6 +27,8 @@ mysqlcppconn_la_SOURCES=\
+   mysql_util.cpp\
+   mysql_warning.cpp
+ 
+-INCLUDES=-I.. @MYSQL_INCLUDE@
++INCLUDES=-I.. -I$(srcdir)/.. @MYSQL_INCLUDE@
+ 
+-mysqlcppconn_la_LDFLAGS=-module
++mysqlcppconn_la_LDFLAGS=-module -avoid-version -no-undefined
++
++mysqlcppconn_la_LIBADD=$(MYSQL_LIBS)
+--- origsrc/mysql-workbench-oss-5.1.16/ext/cppconn/driver/mysql_util.cpp	2009-06-29 16:51:23.000000000 -0500
++++ src/mysql-workbench-oss-5.1.16/ext/cppconn/driver/mysql_util.cpp	2009-07-07 15:51:11.004631700 -0500
+@@ -2231,7 +2231,7 @@ long double strtold(const char *nptr, ch
+ 	u.l_d = ::strtold( nptr, endptr);
+ 	return u.ld;
+ # else
+-	return ::strtold(nptr, endptr);
++	return strtold(nptr, endptr);
+ # endif
+ #endif
+ 
+--- origsrc/mysql-workbench-oss-5.1.16/ext/ctemplate/ctemplate-src/Makefile.am	2009-06-29 16:51:23.000000000 -0500
++++ src/mysql-workbench-oss-5.1.16/ext/ctemplate/ctemplate-src/Makefile.am	2009-07-07 13:53:55.281061000 -0500
+@@ -65,7 +65,7 @@ libctemplate_wb_la_SOURCES = \
+ 	src/htmlparser/statemachine.h src/htmlparser/statemachine.cc \
+ 	src/htmlparser/htmlparser_cpp.h
+ libctemplate_wb_la_CXXFLAGS = $(PTHREAD_CFLAGS) -DNDEBUG $(AM_CXXFLAGS)
+-libctemplate_wb_la_LDFLAGS = $(PTHREAD_CFLAGS) -export-symbols-regex $(CTEMPLATE_SYMBOLS)
++libctemplate_wb_la_LDFLAGS = $(PTHREAD_CFLAGS) -export-symbols-regex $(CTEMPLATE_SYMBOLS) -no-undefined
+ libctemplate_wb_la_LIBADD = $(PTHREAD_LIBS)
+ 
+ ## ^^^^ END OF RULES TO MAKE THE LIBRARIES, BINARIES, AND UNITTESTS
+--- origsrc/mysql-workbench-oss-5.1.16/ext/ctemplate/ctemplate-src/configure.ac	2009-06-29 16:51:23.000000000 -0500
++++ src/mysql-workbench-oss-5.1.16/ext/ctemplate/ctemplate-src/configure.ac	2009-07-07 14:12:35.463564500 -0500
+@@ -8,6 +8,7 @@ AC_INIT(ctemplate, 0.93, opensource@goog
+ # The argument here is just something that should be in the current directory
+ # (for sanity checking)
+ AC_CONFIG_SRCDIR(README)
++AC_CONFIG_MACRO_DIR([m4])
+ AM_INIT_AUTOMAKE([dist-zip])
+ AM_CONFIG_HEADER(src/config.h)
+ 
+--- origsrc/mysql-workbench-oss-5.1.16/ext/scintilla/gtk/Makefile.am	2009-06-29 16:51:23.000000000 -0500
++++ src/mysql-workbench-oss-5.1.16/ext/scintilla/gtk/Makefile.am	2009-07-07 15:33:27.029914000 -0500
+@@ -5,7 +5,7 @@ CXXFLAGS+=-Wall -Wno-missing-braces -Wno
+ #noinst_LTLIBRARIES=libwbscintilla.la
+ pkglib_LTLIBRARIES=libwbscintilla.la
+ 
+-INCLUDES=-I ../include -I ../src @GNOME_CFLAGS@
++INCLUDES=-I$(srcdir)/../include -I$(srcdir)/../src @GNOME_CFLAGS@
+ 
+ libwbscintilla_la_SOURCES=\
+     scintilla-marshal.c\
+@@ -114,3 +114,7 @@ libwbscintilla_la_SOURCES=\
+     ../src/LexVerilog.cxx\
+     ../src/LexVHDL.cxx\
+     ../src/LexYAML.cxx
++
++libwbscintilla_la_LIBADD = $(GNOME_LIBS) $(GLIB_LIBS)
++
++libwbscintilla_la_LDFLAGS = -no-undefined
+--- origsrc/mysql-workbench-oss-5.1.16/frontend/linux/linux_utilities/Makefile.am	2009-06-29 16:51:24.000000000 -0500
++++ src/mysql-workbench-oss-5.1.16/frontend/linux/linux_utilities/Makefile.am	2009-07-07 13:55:41.579686500 -0500
+@@ -29,5 +29,6 @@ liblinux_utilities_la_SOURCES=\
+ 	auto_completable.cpp\
+ 	widgets_auto_cleaner.cpp
+ 
++liblinux_utilities_la_LDFLAGS = -no-undefined
+ 
+ 
+--- origsrc/mysql-workbench-oss-5.1.16/frontend/linux/linux_utilities/gtk_helpers.cpp	2009-06-29 16:51:24.000000000 -0500
++++ src/mysql-workbench-oss-5.1.16/frontend/linux/linux_utilities/gtk_helpers.cpp	2009-07-07 15:11:34.945051900 -0500
+@@ -41,7 +41,9 @@ Gtk::HBox &create_icon_label(const std::
+ //------------------------------------------------------------------------------
+ void open_url(const std::string &url)
+ {
+-#ifdef HAVE_LIBGNOME
++#ifdef HAVE_GTK_2_14
++  gtk_show_uri(NULL, uri.c_str(), GDK_CURRENT_TIME, NULL);
++#elif defined(HAVE_LIBGNOME)
+   gnome_url_show(url.c_str(), NULL);
+ #else
+   g_message("Open URL %s (no url handler)", url.c_str());
+--- origsrc/mysql-workbench-oss-5.1.16/frontend/linux/shell/Makefile.am	2009-06-29 16:51:24.000000000 -0500
++++ src/mysql-workbench-oss-5.1.16/frontend/linux/shell/Makefile.am	2009-07-07 17:13:57.341801600 -0500
+@@ -16,12 +16,12 @@ grtshell_CXXFLAGS = -DNO_MENU_MANAGER
+ 
+ grtshell_LDFLAGS=-rdynamic
+ grtshell_LDADD=\
+-	$(top_srcdir)/backend/wbprivate/libwbprivate.a\
+-	$(top_srcdir)/backend/wbpublic/libwbpublic.la\
+-	$(top_srcdir)/library/canvas/src/libmdcanvas.la\
+-	$(top_srcdir)/library/forms/libmforms.la\
+-	$(top_srcdir)/library/grt/src/libgrt.la\
+-	$(top_srcdir)/library/utilities/src/libguiutil.la\
++	$(top_builddir)/backend/wbprivate/libwbprivate.a\
++	$(top_builddir)/backend/wbpublic/libwbpublic.la\
++	$(top_builddir)/library/canvas/src/libmdcanvas.la\
++	$(top_builddir)/library/forms/libmforms.la\
++	$(top_builddir)/library/grt/src/libgrt.la\
++	$(top_builddir)/library/utilities/src/libguiutil.la\
+ 	@GNOME_LIBS@ @GRT_LIBS@ @PCRE_LIBS@ @GLIB_LIBS@ @CAIRO_LIBS@ @ZIP_LIBS@ @MYSQL_LIBS@
+ 
+ grtshell_SOURCES=\
+--- origsrc/mysql-workbench-oss-5.1.16/frontend/linux/sqlide/Makefile.am	2009-06-29 16:51:24.000000000 -0500
++++ src/mysql-workbench-oss-5.1.16/frontend/linux/sqlide/Makefile.am	2009-07-07 13:55:59.604962000 -0500
+@@ -3,6 +3,8 @@ CXXFLAGS+=-rdynamic
+ 
+ pkglib_LTLIBRARIES=libsqlide.la
+ 
++libsqlide_la_LDFLAGS=-no-undefined
++
+ libsqlide_la_LIBADD=$(top_srcdir)/ext/scintilla/gtk/libwbscintilla.la     
+                              
+ INCLUDES=@GLIB_CFLAGS@ @SIGC_CFLAGS@ @GRT_CFLAGS@ @CAIRO_CFLAGS@ @GNOME_CFLAGS@\
+--- origsrc/mysql-workbench-oss-5.1.16/frontend/linux/workbench/Makefile.am	2009-06-29 16:51:24.000000000 -0500
++++ src/mysql-workbench-oss-5.1.16/frontend/linux/workbench/Makefile.am	2009-07-07 17:14:22.087179700 -0500
+@@ -32,16 +32,16 @@ INCLUDES=@GLIB_CFLAGS@ @SIGC_CFLAGS@ @GR
+ #	-I$(top_srcdir) -include precompiled.h
+ 
+ mysql_workbench_bin_LDADD=\
+-	$(top_srcdir)/library/forms/libmforms.la\
+-	$(top_srcdir)/frontend/linux/linux_utilities/liblinux_utilities.la\
+-	$(top_srcdir)/backend/wbpublic/libwbpublic.la\
+-	$(top_srcdir)/backend/wbprivate/libwbprivate.a\
+-	$(top_srcdir)/library/grt/src/libgrt.la\
+-	$(top_srcdir)/library/dbc/libcdbc.la\
+-	$(top_srcdir)/library/utilities/src/libguiutil.la\
+-	$(top_srcdir)/library/canvas/src/libmdcanvas.la\
+-	$(top_srcdir)/library/canvas/src/libmdcanvasgtk.la\
+-	$(top_srcdir)/ext/ctemplate/ctemplate-src/.libs/libctemplate_wb.la\
++	$(top_builddir)/library/forms/libmforms.la\
++	$(top_builddir)/frontend/linux/linux_utilities/liblinux_utilities.la\
++	$(top_builddir)/backend/wbpublic/libwbpublic.la\
++	$(top_builddir)/backend/wbprivate/libwbprivate.a\
++	$(top_builddir)/library/grt/src/libgrt.la\
++	$(top_builddir)/library/dbc/libcdbc.la\
++	$(top_builddir)/library/utilities/src/libguiutil.la\
++	$(top_builddir)/library/canvas/src/libmdcanvas.la\
++	$(top_builddir)/library/canvas/src/libmdcanvasgtk.la\
++	$(top_builddir)/ext/ctemplate/ctemplate-src/.libs/libctemplate_wb.la\
+ 	@GNOME_LIBS@ @GRT_LIBS@ @PCRE_LIBS@ @GLIB_LIBS@ @CAIRO_LIBS@ @ZIP_LIBS@ @MYSQL_LIBS@
+ 
+ #precompiled.h.gch: precompiled.h
+--- origsrc/mysql-workbench-oss-5.1.16/library/Makefile.am	2009-06-29 16:51:25.000000000 -0500
++++ src/mysql-workbench-oss-5.1.16/library/Makefile.am	2009-07-07 16:47:45.151795000 -0500
+@@ -1,2 +1,2 @@
+-SUBDIRS= canvas dbc sql-parser utilities grt forms
++SUBDIRS= canvas sql-parser utilities grt dbc forms
+ 
+--- origsrc/mysql-workbench-oss-5.1.16/library/canvas/src/Makefile.am	2009-06-29 16:51:25.000000000 -0500
++++ src/mysql-workbench-oss-5.1.16/library/canvas/src/Makefile.am	2009-07-07 16:37:15.962004900 -0500
+@@ -48,8 +48,11 @@ libmdcanvasgtk_la_SOURCES=\
+ 	gtk/mdc_gtk_canvas_view.cpp\
+ 	gtk/mdc_gtk_canvas_scroller.cpp
+ 
+-libmdcanvas_la_LIBADD=@CAIRO_LIBS@
+-libmdcanvasgtk_la_LIBADD=@CAIRO_LIBS@ @GNOME_LIBS@
++libmdcanvas_la_LDFLAGS=-no-undefined
++libmdcanvasgtk_la_LDFLAGS=-no-undefined
++
++libmdcanvas_la_LIBADD=@CAIRO_LIBS@ @SIGC_LIBS@ @GLIB_LIBS@
++libmdcanvasgtk_la_LIBADD=libmdcanvas.la @CAIRO_LIBS@ @GNOME_LIBS@
+ 
+ INCLUDES=@CAIRO_CFLAGS@ @GNOME_CFLAGS@ -I$(top_srcdir)/backend 
+ 
+--- origsrc/mysql-workbench-oss-5.1.16/library/dbc/Makefile.am	2009-06-29 16:51:25.000000000 -0500
++++ src/mysql-workbench-oss-5.1.16/library/dbc/Makefile.am	2009-07-07 16:56:19.897038100 -0500
+@@ -2,7 +2,6 @@
+ pkglib_LTLIBRARIES=libcdbc.la
+ 
+ 
+-
+ libcdbc_la_SOURCES=\
+ src/driver_manager.cpp\
+ src/sql_batch_exec.cpp
+@@ -14,5 +13,9 @@ INCLUDES=@CAIRO_CFLAGS@ @GNOME_CFLAGS@ @
+ -I$(top_srcdir)/library/utilities/src\
+ -I$(top_srcdir)/ext/cppconn
+ 
++libcdbc_la_LDFLAGS=-no-undefined
++
++libcdbc_la_LIBADD=$(top_builddir)/library/grt/src/libgrt.la
++
+ 
+ 
+--- origsrc/mysql-workbench-oss-5.1.16/library/dbc/src/driver_manager.cpp	2009-06-29 16:51:25.000000000 -0500
++++ src/mysql-workbench-oss-5.1.16/library/dbc/src/driver_manager.cpp	2009-07-07 14:00:03.757442600 -0500
+@@ -84,7 +84,7 @@ std::auto_ptr<Connection> DriverManager:
+ 
+   std::string library= connectionProperties->driver()->driverLibraryName();
+ 
+-#ifdef _WIN32
++#if defined(_WIN32) || defined(__CYGWIN__)
+   library.append(".dll");
+ #elif defined(__APPLE__)
+   library.append(".dylib");
+--- origsrc/mysql-workbench-oss-5.1.16/library/forms/Makefile.am	2009-06-29 16:51:25.000000000 -0500
++++ src/mysql-workbench-oss-5.1.16/library/forms/Makefile.am	2009-07-07 13:56:50.798244200 -0500
+@@ -31,6 +31,8 @@ utilities.cpp\
+ gtk/lf_mforms.cpp\
+ gtk/lf_wizard.cpp
+ 
++libmforms_la_LDFLAGS=-no-undefined
++
+ libmforms_la_LIBADD=@GNOME_LIBS@
+ 
+ INCLUDES=@GNOME_CFLAGS@ @SIGC_CFLAGS@\
+--- origsrc/mysql-workbench-oss-5.1.16/library/forms/mforms/base.h	2009-06-29 16:51:25.000000000 -0500
++++ src/mysql-workbench-oss-5.1.16/library/forms/mforms/base.h	2009-07-07 17:21:24.181530700 -0500
+@@ -33,6 +33,7 @@
+ #endif
+ 
+ #ifndef _WIN32
++#undef __stdcall
+ #define __stdcall 
+ #endif
+ 
+--- origsrc/mysql-workbench-oss-5.1.16/library/grt/src/Makefile.am	2009-06-29 16:51:25.000000000 -0500
++++ src/mysql-workbench-oss-5.1.16/library/grt/src/Makefile.am	2009-07-07 16:47:06.174949400 -0500
+@@ -6,7 +6,7 @@ pkglibdir=$(libdir)/mysql-workbench
+ 
+ pkglib_LTLIBRARIES=libgrt.la
+ 
+-INCLUDES=-I. -I.. @GLIB_CFLAGS@ @SIGC_CFLAGS@ \
++INCLUDES=-I$(srcdir)/.. @GLIB_CFLAGS@ @SIGC_CFLAGS@ \
+ 	-I$(top_srcdir)/library/utilities/src\
+ 	-I$(top_srcdir)/generated\
+ 	@MYSQL_INCLUDE@ @PCRE_CFLAGS@ @LUA_CFLAGS@ \
+@@ -43,3 +43,6 @@ libgrt_la_SOURCES=\
+ 	python_grtobject.cpp\
+ 	python_module.cpp
+ 
++libgrt_la_LDFLAGS=-no-undefined
++
++libgrt_la_LIBADD=$(top_builddir)/library/utilities/src/libguiutil.la @GLIB_LIBS@ @SIGC_LIBS@ @LUA_LIBS@
+--- origsrc/mysql-workbench-oss-5.1.16/library/grt/src/grtpp_module_cpp.cpp	2009-06-29 16:51:25.000000000 -0500
++++ src/mysql-workbench-oss-5.1.16/library/grt/src/grtpp_module_cpp.cpp	2009-07-07 14:00:26.462789500 -0500
+@@ -265,7 +265,7 @@ bool CPPModuleLoader::check_file_extensi
+ {
+ #ifdef __APPLE__
+   static const char *ext= ".dylib";
+-#elif defined(_WIN32)
++#elif defined(_WIN32) || defined(__CYGWIN__)
+   static const char *ext= ".dll";
+ #else
+   static const char *ext= ".so";
+--- origsrc/mysql-workbench-oss-5.1.16/library/sql-parser/include/myx_sql_tree_item.h	2009-06-29 16:51:25.000000000 -0500
++++ src/mysql-workbench-oss-5.1.16/library/sql-parser/include/myx_sql_tree_item.h	2009-07-07 16:50:31.581960200 -0500
+@@ -6,6 +6,7 @@
+ #include <list>
+ #include <set>
+ #include <iostream>
++#include <stdarg.h>
+ #include <stdlib.h>
+ #include <string.h>
+ 
+--- origsrc/mysql-workbench-oss-5.1.16/library/sql-parser/source/Makefile.am	2009-06-29 16:51:25.000000000 -0500
++++ src/mysql-workbench-oss-5.1.16/library/sql-parser/source/Makefile.am	2009-07-07 17:06:47.815502800 -0500
+@@ -27,11 +27,12 @@ libsqlparser_la_SOURCES=\
+ 	ctype-win1250ch.cpp\
+ 	ctype.cpp\
+ 	int2str.cpp\
+-	myx_lex_helpers.cpppp\
+-	myx_sql_tree_item.cpppp\
+-	myx_statement_parser.cpppp\
+-	myx_unicode_scanner.cpppp\
+-	sql_parser_symbols.cpppp\
++	myx_lex_helpers.cpp\
++	myx_sql_tree_item.cpp\
++	myx_statement_parser.cpp\
++	myx_unicode_scanner.cpp\
++	sql_parser_symbols.cpp\
++	my_lib.cpp\
+ 	my_messnc.cpp\
+ 	my_static.cpp\
+ 	my_strtoll10.cpp\
+@@ -44,8 +45,10 @@ libsqlparser_la_SOURCES=\
+ 	linux/myx_sql_parser.cpp\
+ 	xml.cpp
+ 
+-INCLUDES=-I../include\
+-	-I./linux\
++INCLUDES=-I$(srcdir)/../include\
++	-I$(srcdir)/linux\
+ 	@MYSQL_INCLUDE@\
+ 	-I$(top_srcdir)/library/utilities/src\
+ 	@GLIB_CFLAGS@ @PCRE_CFLAGS@
++
++libsqlparser_la_LDFLAGS=-no-undefined
+--- origsrc/mysql-workbench-oss-5.1.16/library/utilities/src/Makefile.am	2009-06-29 16:51:26.000000000 -0500
++++ src/mysql-workbench-oss-5.1.16/library/utilities/src/Makefile.am	2009-07-07 16:46:30.405652900 -0500
+@@ -13,4 +13,6 @@ libguiutil_la_SOURCES=myx_util.c\
+ 	myx_international_file.c\
+ 	myx_shared_util_functions.c
+ 
++libguiutil_la_LDFLAGS=-no-undefined
+ 
++libguiutil_la_LIBADD=@GLIB_LIBS@
+--- origsrc/mysql-workbench-oss-5.1.16/modules/db/Makefile.am	2009-06-29 16:51:26.000000000 -0500
++++ src/mysql-workbench-oss-5.1.16/modules/db/Makefile.am	2009-07-07 13:57:52.224182800 -0500
+@@ -9,4 +9,4 @@ INCLUDES=-I$(top_srcdir)/generated -I$(t
+ 
+ 
+ dbutils_grt_la_SOURCES=src/dbutils.cpp
+-dbutils_grt_la_LDFLAGS=-module
++dbutils_grt_la_LDFLAGS=-module -avoid-version -no-undefined
+--- origsrc/mysql-workbench-oss-5.1.16/modules/db.mysql/Makefile.am	2009-06-29 16:51:26.000000000 -0500
++++ src/mysql-workbench-oss-5.1.16/modules/db.mysql/Makefile.am	2009-07-07 13:58:07.073159600 -0500
+@@ -31,7 +31,7 @@ INCLUDES=-I$(top_srcdir)/generated -I$(t
+ #                        db_mysql_statement_parser_fe.cpp
+ #
+ 
+-db_mysql_grt_la_LDFLAGS=-module 
++db_mysql_grt_la_LDFLAGS=-module -avoid-version -no-undefined
+ db_mysql_grt_la_LIBADD=$(top_srcdir)/ext/ctemplate/ctemplate-src/.libs/libctemplate_wb.la
+ 
+ 
+--- origsrc/mysql-workbench-oss-5.1.16/modules/db.mysql.sqlparser/Makefile.am	2009-06-29 16:51:26.000000000 -0500
++++ src/mysql-workbench-oss-5.1.16/modules/db.mysql.sqlparser/Makefile.am	2009-07-07 13:58:19.209595100 -0500
+@@ -18,7 +18,7 @@ INCLUDES=\
+ 	-I$(top_srcdir)/library/utilities/src\
+ 	@MYSQL_INCLUDE@ @GRT_CFLAGS@ @GLIB_CFLAGS@ @PCRE_CFLAGS@ @SIGC_CFLAGS@
+ 
+-db_mysql_sqlparser_grt_la_LDFLAGS=-module
++db_mysql_sqlparser_grt_la_LDFLAGS=-module -avoid-version -no-undefined
+ 
+ db_mysql_sqlparser_grt_la_SOURCES=\
+ 	src/db.mysql.sqlparser.cpp\
+--- origsrc/mysql-workbench-oss-5.1.16/modules/grt.forms/Makefile.am	2009-06-29 16:51:26.000000000 -0500
++++ src/mysql-workbench-oss-5.1.16/modules/grt.forms/Makefile.am	2009-07-07 13:58:27.305968800 -0500
+@@ -10,5 +10,5 @@ INCLUDES=-I$(top_srcdir)/generated -I$(t
+ 
+ 
+ forms_grt_la_SOURCES=src/grt_forms.cpp
+-forms_grt_la_LDFLAGS=-module
++forms_grt_la_LDFLAGS=-module -avoid-version -no-undefined
+ 
+--- origsrc/mysql-workbench-oss-5.1.16/modules/wb.model/Makefile.am	2009-06-29 16:51:26.000000000 -0500
++++ src/mysql-workbench-oss-5.1.16/modules/wb.model/Makefile.am	2009-07-07 13:58:45.866252400 -0500
+@@ -65,7 +65,7 @@ INCLUDES=-I$(top_srcdir)/generated\
+ 	@MYSQL_INCLUDE@ @GRT_CFLAGS@ @GLIB_CFLAGS@ @SIGC_CFLAGS@
+ 
+ 
+-wb_model_grt_la_LDFLAGS=-module
++wb_model_grt_la_LDFLAGS=-module -avoid-version -no-undefined
+ #wb_model_grt_la_LIBADD=$(top_srcdir)/ext/ctemplate
+ 
+ wb_model_grt_la_SOURCES=src/graph_renderer.cpp \
+--- origsrc/mysql-workbench-oss-5.1.16/modules/wb.mysql.import/Makefile.am	2009-06-29 16:51:26.000000000 -0500
++++ src/mysql-workbench-oss-5.1.16/modules/wb.mysql.import/Makefile.am	2009-07-07 13:58:52.106347700 -0500
+@@ -18,7 +18,7 @@ INCLUDES=\
+ 	@MYSQL_INCLUDE@ @GRT_CFLAGS@ @GLIB_CFLAGS@ @SIGC_CFLAGS@
+ 
+ 
+-wb_mysql_import_grt_la_LDFLAGS=-module
++wb_mysql_import_grt_la_LDFLAGS=-module -avoid-version -no-undefined
+ #wb_mysql_import_grt_la_LIBADD=
+ 
+ wb_mysql_import_grt_la_SOURCES=\
+--- origsrc/mysql-workbench-oss-5.1.16/modules/wb.mysql.validation/Makefile.am	2009-06-29 16:51:26.000000000 -0500
++++ src/mysql-workbench-oss-5.1.16/modules/wb.mysql.validation/Makefile.am	2009-07-07 13:58:55.411398200 -0500
+@@ -19,7 +19,7 @@ INCLUDES=-I$(top_srcdir)/generated\
+ 	@MYSQL_INCLUDE@ @GRT_CFLAGS@ @GLIB_CFLAGS@ @SIGC_CFLAGS@
+ 
+ 
+-wb_mysql_validation_grt_la_LDFLAGS=-module
++wb_mysql_validation_grt_la_LDFLAGS=-module -avoid-version -no-undefined
+ #wb_mysql_import_grt_la_LIBADD=$(top_srcdir)
+ 
+ wb_mysql_validation_grt_la_SOURCES=src/register_plugin.cpp\
+--- origsrc/mysql-workbench-oss-5.1.16/modules/wb.validation/Makefile.am	2009-06-29 16:51:26.000000000 -0500
++++ src/mysql-workbench-oss-5.1.16/modules/wb.validation/Makefile.am	2009-07-07 13:58:59.195206100 -0500
+@@ -18,7 +18,7 @@ INCLUDES=-I$(top_srcdir)/generated\
+ 	@MYSQL_INCLUDE@ @GRT_CFLAGS@ @GLIB_CFLAGS@ @SIGC_CFLAGS@
+ 
+ 
+-wb_validation_grt_la_LDFLAGS=-module
++wb_validation_grt_la_LDFLAGS=-module -avoid-version -no-undefined
+ #wb_mysql_import_grt_la_LIBADD=$(top_srcdir)/backend/grtdb/libgrtdbbe.la 
+ 
+ wb_validation_grt_la_SOURCES=src/register_plugin.cpp\
+--- origsrc/mysql-workbench-oss-5.1.16/plugins/db.mysql/frontend/Makefile.am	2009-06-29 16:51:26.000000000 -0500
++++ src/mysql-workbench-oss-5.1.16/plugins/db.mysql/frontend/Makefile.am	2009-07-07 17:24:06.323335800 -0500
+@@ -20,11 +20,13 @@ INCLUDES=-I$(top_srcdir)/generated -I$(t
+     -I$(top_srcdir)/plugins\
+ 		-I$(top_srcdir)/plugins/db/backend\
+ 		-I$(top_srcdir)/plugins/db.mysql.sync/backend\
+-	  -I../backend\
++	  -I$(srcdir)/../backend\
+     @GRT_CFLAGS@ @GLIB_CFLAGS@ @SIGC_CFLAGS@ 
+ 
+ 
+-db_mysql_wbp_la_LDFLAGS=-module
++db_mysql_wbp_la_LDFLAGS=-module -avoid-version -no-undefined
++
++db_mysql_wbp_la_LIBADD=$(top_builddir)/library/grt/src/libgrt.la @GLIB_LIBS@ @SIGC_LIBS@
+ 
+ db_mysql_wbp_la_SOURCES=\
+ ../backend/db_frw_eng_be.cpp\
+--- origsrc/mysql-workbench-oss-5.1.16/plugins/db.mysql.diff.reporting/frontend/Makefile.am	2009-06-29 16:51:26.000000000 -0500
++++ src/mysql-workbench-oss-5.1.16/plugins/db.mysql.diff.reporting/frontend/Makefile.am	2009-07-07 13:59:09.362861400 -0500
+@@ -19,7 +19,7 @@ INCLUDES=-I$(top_srcdir)/generated -I$(t
+     @GRT_CFLAGS@ @GLIB_CFLAGS@ @SIGC_CFLAGS@ 
+ 
+ 
+-db_mysql_diff_reporting_wbp_la_LDFLAGS=-module
++db_mysql_diff_reporting_wbp_la_LDFLAGS=-module -avoid-version -no-undefined
+ 
+ db_mysql_diff_reporting_wbp_la_SOURCES=\
+ ../backend/db_mysql_diff_reporting.cpp\
+--- origsrc/mysql-workbench-oss-5.1.16/plugins/db.mysql.editors/backend/register_plugin.cpp	2009-06-29 16:51:26.000000000 -0500
++++ src/mysql-workbench-oss-5.1.16/plugins/db.mysql.editors/backend/register_plugin.cpp	2009-07-07 14:05:48.728713700 -0500
+@@ -13,6 +13,9 @@
+ 
+ #ifdef _WIN32
+ # define FRONTEND_LIBNAME(obj, windows_dll, linux_so, osx_dylib)\
++  obj->moduleName(".\\"windows_dll)
++#elif defined(__CYGWIN__)
++# define FRONTEND_LIBNAME(obj, windows_dll, linux_so, osx_dylib)\
+   obj->moduleName(windows_dll)
+ #elif defined(__APPLE__)
+ # define FRONTEND_LIBNAME(obj, windows_dll, linux_so, osx_dylib)\
+@@ -72,7 +75,7 @@ static grt::ListRef<app_Plugin> get_mysq
+   app_PluginRef relationship_editor(grt);
+   
+   FRONTEND_LIBNAME(schema_editor,
+-                   ".\\db.mysql.editors.wbp.fe.dll",
++                   "db.mysql.editors.wbp.fe.dll",
+                    "db.mysql.editors.wbp.so",
+                    "db.mysql.editors.mwbplugin");
+   schema_editor->pluginType("gui");
+@@ -85,7 +88,7 @@ static grt::ListRef<app_Plugin> get_mysq
+   editors.insert(schema_editor);
+ 
+   FRONTEND_LIBNAME(table_editor,
+-                   ".\\db.mysql.editors.wbp.fe.dll",
++                   "db.mysql.editors.wbp.fe.dll",
+                    "db.mysql.editors.wbp.so",
+                    "db.mysql.editors.mwbplugin");
+   table_editor->pluginType("gui");
+@@ -99,7 +102,7 @@ static grt::ListRef<app_Plugin> get_mysq
+ 
+ 
+   FRONTEND_LIBNAME(view_editor, 
+-                   ".\\db.mysql.editors.wbp.fe.dll",
++                   "db.mysql.editors.wbp.fe.dll",
+                    "db.mysql.editors.wbp.so",
+                    "db.mysql.editors.mwbplugin");
+   view_editor->pluginType("gui");
+@@ -112,7 +115,7 @@ static grt::ListRef<app_Plugin> get_mysq
+   editors.insert(view_editor);
+ 
+   FRONTEND_LIBNAME(routine_group_editor, 
+-                   ".\\db.mysql.editors.wbp.fe.dll",
++                   "db.mysql.editors.wbp.fe.dll",
+                    "db.mysql.editors.wbp.so",
+                    "db.mysql.editors.mwbplugin");
+   routine_group_editor->pluginType("gui");
+@@ -125,7 +128,7 @@ static grt::ListRef<app_Plugin> get_mysq
+   editors.insert(routine_group_editor);
+ 
+   FRONTEND_LIBNAME(routine_editor, 
+-                   ".\\db.mysql.editors.wbp.fe.dll",
++                   "db.mysql.editors.wbp.fe.dll",
+                    "db.mysql.editors.wbp.so",
+                    "db.mysql.editors.mwbplugin");
+   routine_editor->pluginType("gui");
+@@ -140,7 +143,7 @@ static grt::ListRef<app_Plugin> get_mysq
+ 
+   // generic
+   FRONTEND_LIBNAME(user_editor, 
+-                   ".\\db.mysql.editors.wbp.fe.dll",
++                   "db.mysql.editors.wbp.fe.dll",
+                    "db.mysql.editors.wbp.so",
+                    "db.mysql.editors.mwbplugin");
+   user_editor->pluginType("gui");
+@@ -153,7 +156,7 @@ static grt::ListRef<app_Plugin> get_mysq
+   editors.insert(user_editor);
+ 
+   FRONTEND_LIBNAME(role_editor, 
+-                   ".\\db.mysql.editors.wbp.fe.dll",
++                   "db.mysql.editors.wbp.fe.dll",
+                    "db.mysql.editors.wbp.so",
+                    "db.mysql.editors.mwbplugin");
+   role_editor->pluginType("gui");
+@@ -166,7 +169,7 @@ static grt::ListRef<app_Plugin> get_mysq
+   editors.insert(role_editor);
+ 
+   FRONTEND_LIBNAME(relationship_editor, 
+-                   ".\\db.mysql.editors.wbp.fe.dll",
++                   "db.mysql.editors.wbp.fe.dll",
+                    "db.mysql.editors.wbp.so",
+                    "db.mysql.editors.mwbplugin");
+   relationship_editor->pluginType("gui");
+--- origsrc/mysql-workbench-oss-5.1.16/plugins/db.mysql.editors/linux/Makefile.am	2009-06-29 16:51:26.000000000 -0500
++++ src/mysql-workbench-oss-5.1.16/plugins/db.mysql.editors/linux/Makefile.am	2009-07-07 13:51:33.947397100 -0500
+@@ -31,9 +31,9 @@ INCLUDES=-I$(top_srcdir)/generated -I$(t
+                 @GRT_CFLAGS@ @GLIB_CFLAGS@ @GNOME_CFLAGS@ @SIGC_CFLAGS@
+ 
+ 
+-db_mysql_editors_wbp_la_LDFLAGS=-module
+-db_mysql_editors_wbp_la_LIBADD=$(top_srcdir)/frontend/linux/linux_utilities/liblinux_utilities.la\
+-                               $(top_srcdir)/ext/scintilla/gtk/libwbscintilla.la
++db_mysql_editors_wbp_la_LDFLAGS=-module -avoid-version -no-undefined
++db_mysql_editors_wbp_la_LIBADD=$(top_builddir)/frontend/linux/linux_utilities/liblinux_utilities.la\
++                               $(top_builddir)/ext/scintilla/gtk/libwbscintilla.la
+ 
+ db_mysql_editors_wbp_la_SOURCES=\
+ ../backend/mysql_relationship_editor.cpp\
+--- origsrc/mysql-workbench-oss-5.1.16/plugins/wb.model.editors/linux/Makefile.am	2009-06-29 16:51:26.000000000 -0500
++++ src/mysql-workbench-oss-5.1.16/plugins/wb.model.editors/linux/Makefile.am	2009-07-07 13:59:19.804271000 -0500
+@@ -19,7 +19,7 @@ INCLUDES=-I$(top_srcdir)/generated -I$(t
+                 @GRT_CFLAGS@ @GLIB_CFLAGS@ @SIGC_CFLAGS@ @GNOME_CFLAGS@
+ 
+ 
+-wb_model_editors_wbp_la_LDFLAGS=-module
++wb_model_editors_wbp_la_LDFLAGS=-module -avoid-version -no-undefined
+ wb_model_editors_wbp_la_LIBADD=$(top_srcdir)/frontend/linux/linux_utilities/liblinux_utilities.la
+ 
+ wb_model_editors_wbp_la_SOURCES=\
+--- origsrc/mysql-workbench-oss-5.1.16/plugins/wb.model.reporting/frontend/Makefile.am	2009-06-29 16:51:26.000000000 -0500
++++ src/mysql-workbench-oss-5.1.16/plugins/wb.model.reporting/frontend/Makefile.am	2009-07-07 13:59:23.875583200 -0500
+@@ -15,7 +15,7 @@ INCLUDES=-I$(top_srcdir)/generated -I$(t
+                 @GRT_CFLAGS@ @GLIB_CFLAGS@ @SIGC_CFLAGS@
+ 
+ 
+-wb_model_reporting_wbp_la_LDFLAGS=-module
++wb_model_reporting_wbp_la_LDFLAGS=-module -avoid-version -no-undefined
+ 
+ wb_model_reporting_wbp_la_SOURCES=\
+ ../backend/wb_model_reporting.cpp\
+--- origsrc/mysql-workbench-oss-5.1.16/plugins/wb.printing/linux/Makefile.am	2009-06-29 16:51:26.000000000 -0500
++++ src/mysql-workbench-oss-5.1.16/plugins/wb.printing/linux/Makefile.am	2009-07-07 13:59:27.020631200 -0500
+@@ -19,7 +19,7 @@ INCLUDES=-I$(top_srcdir)/generated -I$(t
+                 @GRT_CFLAGS@ @GLIB_CFLAGS@ @SIGC_CFLAGS@ @GNOME_CFLAGS@
+ 
+ 
+-wb_printing_wbp_la_LDFLAGS=-module
++wb_printing_wbp_la_LDFLAGS=-module -avoid-version -no-undefined
+ wb_printing_wbp_la_LIBADD=$(top_srcdir)/frontend/linux/linux_utilities/liblinux_utilities.la
+ 
+ wb_printing_wbp_la_SOURCES=\

@@ -1,0 +1,9 @@
+inherit gnome2
+
+DESCRIPTION="MySQL Administrator and Query Browser"
+HOMEPAGE="http://dev.mysql.org/workbench/"
+SRC_URI="http://mirror.csclub.uwaterloo.ca/mysql/Downloads/MySQLGUITools/${PN}-oss-${PV}.tar.gz"
+SRC_DIR="${PN}-oss-${PV}"
+
+GNOME2_NO_AUTOGEN="ext/curl ext/yassl ext/yassl/taocrypt"
+CYGCONF_ARGS="--disable-static"
